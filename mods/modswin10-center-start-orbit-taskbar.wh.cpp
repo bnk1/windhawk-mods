@@ -27,6 +27,7 @@ RECT g_taskViewRect = {};
 RECT g_taskRect = {};
 
 bool g_saved = false;
+bool g_applying = false;
 
 struct FindData
 {
@@ -74,7 +75,8 @@ void MoveWindowInParent(HWND hwnd, HWND reference, int x, int y, int w, int h)
     POINT pt = { x, y };
     MapWindowPoints(reference, parent, &pt, 1);
 
-    SetWindowPos(hwnd, nullptr, pt.x, pt.y, w, h, SWP_NOZORDER | SWP_NOACTIVATE);
+    SetWindowPos(hwnd, nullptr, pt.x, pt.y, w, h,
+        SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS);
 }
 
 void RestoreWindow(HWND hwnd, const RECT& rect)
@@ -206,9 +208,17 @@ void CenterTaskbar()
         Wh_Log(L"Saved original positions");
     }
 
+	if (g_applying)
+		return;
+
+	g_applying = true;
+	
     MoveWindowInParent(taskSw, taskbar, taskX, 0, taskWidth, taskbarHeight);
     MoveWindowInParent(start, taskbar, startX, 0, startWidth, startHeight);
 
+	// existing MoveWindowInParent calls here
+	g_applying = false;
+	
     if (taskView)
         MoveWindowInParent(taskView, taskbar, taskViewX, 0, taskViewWidth, taskViewHeight);
 
@@ -224,7 +234,7 @@ BOOL Wh_ModInit()
 {
     Wh_Log(L"Init");
 
-    SetTimer(nullptr, g_timer, 250, TimerProc);
+	SetTimer(nullptr, g_timer, 50, TimerProc);
     CenterTaskbar();
 
     return TRUE;
